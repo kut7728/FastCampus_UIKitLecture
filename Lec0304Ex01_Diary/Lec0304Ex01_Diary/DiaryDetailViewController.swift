@@ -44,12 +44,34 @@ class DiaryDetailViewController: UIViewController {
  
     @IBAction func tapEditButton(_ sender: UIButton) {
         guard let viewController = self.storyboard?.instantiateViewController(withIdentifier: "WriteDiaryViewController") as? WriteDiaryViewController else { return }
+        guard let indexPath = self.indexPath else { return }
+        guard let diary = self.diary else { return }
+        viewController.diaryEditorMode = .edit(indexPath, diary)
+        
+        // notification을 관찰하는 옵저버 추가
+        NotificationCenter.default.addObserver(self,  // 어떤 객체에서 관찰할 건지 : 현재 뷰컨트롤러
+                                               selector: #selector(editDiaryNotification(_ :)), // 관찰되면 뭘 할지
+                                               name: NSNotification.Name("editDiary"),  // 어떤 이벤트를 관찰할지
+                                               object: nil) // ???
+        
         self.navigationController?.pushViewController(viewController, animated: true)
+    }
+    
+    @objc func editDiaryNotification(_ notification: Notification) {
+        guard let diary = notification.object as? Diary else { return }
+        guard let row = notification.userInfo?["indexPath.row"] as? Int else { return }
+        self.diary = diary
+        self.configureView()
     }
     
     @IBAction func tapDeleteButton(_ sender: UIButton) {
         guard let indexPath = self.indexPath else { return }
         self.delegate?.didSelectDelete(indexPath: indexPath)
         self.navigationController?.popViewController(animated: true)
+    }
+    
+    // 본 뷰컨트롤러가 해제될때 notification 옵저버도 삭제
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }

@@ -7,6 +7,11 @@
 
 import UIKit
 
+enum DiaryEditorMode {
+    case new
+    case edit(IndexPath, Diary)
+}
+
 protocol WriteDiaryViewDelegate: AnyObject {
     func didSelectRegister(diary: Diary)
 }
@@ -21,6 +26,8 @@ class WriteDiaryViewController: UIViewController {
     private let datePicker = UIDatePicker()
     private var diaryDate: Date?
     weak var delegate: WriteDiaryViewDelegate?
+    var diaryEditorMode: DiaryEditorMode = .new
+
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -33,6 +40,28 @@ class WriteDiaryViewController: UIViewController {
         self.confirmButton.isEnabled = false
         // 텍스트 필드 값변화시 등록버튼 활성화 여부 검사
         self.configureInputField()
+        self.configureEditMode()
+    }
+    
+    private func configureEditMode() {
+        switch self.diaryEditorMode {
+        case let .edit(_, diary):
+            self.titleTextField.text = diary.title
+            self.contentsTextView.text = diary.contents
+            self.dateTextField.text = self.dateToString(date: diary.date)
+            self.diaryDate = diary.date
+            self.confirmButton.title = "수정"
+        default:
+            break
+        }
+    }
+    
+    private func dateToString(date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yy년 MM월 dd일(EEEEE)"
+        formatter.locale = Locale(identifier: "ko_KR")
+        
+        return formatter.string(from: date)
     }
     
     // 텍스트뷰 테두리 설정
@@ -98,6 +127,15 @@ class WriteDiaryViewController: UIViewController {
         guard let date = self.diaryDate else {return}
         let diary = Diary(title: title, contents: contents, date: date, isStar: false)
         
+        switch self.diaryEditorMode {
+        case .new:
+            self.delegate?.didSelectRegister(diary: diary)
+        case .edit(let indexPath, _):
+            NotificationCenter.default.post(
+                name: NSNotification.Name("editDiary"), // notification의 이름, 옵저버에서 이 이름의 이벤트를 관찰함
+                object: diary,  // notificationCenter를 통해 전달할 객체
+                userInfo: ["indexPath.row": indexPath.row])  // 노티와 관련된 값을 넘길 수 있음, 데이터의 수정과 동시에 컬렉션뷰도 수정해야하므로 셀의 위치 전달
+        }
         self.delegate?.didSelectRegister(diary: diary)
         self.navigationController?.popViewController(animated: true)
     }
